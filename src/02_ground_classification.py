@@ -67,3 +67,45 @@ def generate_dtm_grid(min_x, max_x, min_y, max_y, resolution=2.0):
     print(f"    Total pixels: {grid_xx.size:,}")
 
     return grid_xx, grid_yy, resolution
+
+def interpolate_dtm(ground_x, ground_y, ground_z, grid_xx, grid_yy, method='linear'):
+    # Interpolate ground points to regular grid
+
+    print(f"Interpolating ground surface using '{method}' method")
+
+    # Flatten grid
+    grid_points = np.column_stack((grid_xx.ravel(), grid_yy.ravel()))
+    ground_points = np.column_stack((ground_x, ground_y))
+
+    # Interpolate (using fill_value=np.nan) to identify areas without ground data
+    interpolated = griddata(
+        points=ground_points,
+        values=ground_z,
+        xi = grid_points,
+        method=method,
+        fill_value=np.nan
+    )
+
+    # Reshape to 2D grid
+    dtm = interpolated.reshape(grid_xx.shape)
+
+    # Quality metrics
+    valid_pixels = np.sum(~np.isnan(dtm))
+    coverage_pct = (valid_pixels / dtm.size) * 100
+
+    print(f"    Valid Pixels: {valid_pixels:,} ({coverage_pct:.1f}% coverage)")
+
+    if coverage_pct < 80:
+        print(f"    Low coverage ({coverage_pct:.1f}%) - filling gaps with nearest neighbour...")
+
+        filled = griddata(
+            points=ground_points,
+            values=ground_z,
+            xi=grid_points,
+            method='nearest',
+            fill_value=ground_z.mean()
+        )
+        dtm[np.isnan(dtm)] = filled[np.isnan(dtm)]
+        print(f"    Gap-filled coverage: 100%")
+    
+    return dtm
