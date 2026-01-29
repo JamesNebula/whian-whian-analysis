@@ -1,0 +1,90 @@
+{
+  "project": "Whian Whian Rainforest LiDAR Analysis",
+  "date_processed": "2026-01-29T17:17:54.772005",
+  "metadata": {
+    "file_info": {
+      "filename": "whian.laz",
+      "filepath": "/Users/jamescawthray/Desktop/whian-whian-analysis/data/raw/whian.laz",
+      "point_count": 6261585,
+      "point_format": 3,
+      "version": "1.2",
+      "created_date": "2026-01-29 17:17:50.769868"
+    },
+    "spatial_extent": {
+      "min_x": 534000.0,
+      "max_x": 536000.0,
+      "min_y": 6832000.0,
+      "max_y": 6834000.0,
+      "min_z": 186.92000000000002,
+      "max_z": 369.79,
+      "width_m": 2000.0,
+      "length_m": 2000.0,
+      "area_hectares": 400.0
+    },
+    "point_density": {
+      "total_points": 6261585,
+      "area_m2": 4000000.0,
+      "points_per_m2": 1.56539625
+    },
+    "height_statistics": {
+      "min_height_m": 186.92000000000002,
+      "max_height_m": 369.79,
+      "mean_height_m": 245.62153895219822,
+      "median_height_m": 237.27,
+      "std_height_m": 41.54827138160485,
+      "percentiles": {
+        "p10": 194.09,
+        "p25": 212.83,
+        "p50": 237.27,
+        "p75": 276.90000000000003,
+        "p90": 305.53000000000003
+      }
+    },
+    "classifications": {
+      "2": 384943,
+      "3": 121907,
+      "4": 108771,
+      "5": 4966460,
+      "6": 266301,
+      "7": 4213,
+      "9": 63627,
+      "12": 345363
+    },
+    "extra_dimensions": [
+      "X",
+      "Y",
+      "Z",
+      "intensity",
+      "return_number",
+      "number_of_returns",
+      "scan_direction_flag",
+      "edge_of_flight_line",
+      "classification",
+      "synthetic",
+      "key_point",
+      "withheld",
+      "scan_angle_rank",
+      "user_data",
+      "point_source_id",
+      "gps_time",
+      "red",
+      "green",
+      "blue"
+    ],
+    "return_statistics": {
+      "1": 5732609,
+      "2": 521857,
+      "3": 7107,
+      "4": 12
+    }
+  },
+  "quality_assessment": {
+    "issues_found": [
+      "Low Density: 1.6 pts/m2 may miss fine canopy structure"
+    ],
+    "recommendations": [
+      "Consider higher density data for species-level analysis",
+      "Good canopy height range detected - suitable for emergent tree analysis"
+    ]
+  }
+}

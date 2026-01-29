@@ -29,45 +29,53 @@ def load_laz_file(filepath):
         raise RuntimeError(f"Error loading LAZ file: {e}")
     
 
-def extract_metadata(las):
+def extract_metadata(las, filepath):
     print("Extracting metadata")
+
+    x = np.array(las.x)
+    y = np.array(las.y)
+    z = np.array(las.z)
+
+    version = las.header.version
+    version_str = f"{las.header.version.major}.{las.header.version.minor}" if hasattr(las.header.version, 'major') else str(las.header.version)
 
     metadata = {
         "file_info": {
-            "filename": Path(las.header.file_source_id).name if hasattr(las.header, 'file_source_id') else 'unknown',
+            "filename": filepath.name,
+            "filepath": str(filepath.absolute()),
             "point_count": len(las),
             "point_format": las.header.point_format.id,
-            "version": f"{las.header.version_major}.{las.header.version_minor}",
+            "version": version_str,
             "created_date": str(datetime.now()),
         },
         "spatial_extent": {
-            "min_x": float(las.x.min()),
-            "max_x": float(las.x.max()),
-            "min_y": float(las.y.min()),
-            "max_y": float(las.y.max()),
-            "min_z": float(las.z.min()),
-            "max_z": float(las.z.max()),
-            "width_m": float(las.x.max() - las.x.min()),
-            "length_m": float(las.y.max() - las.y.min()),
-            "area_hectares": float((las.x.max() - las.x.min()) * (las.y.max() - las.y.min()) / 10000),
+            "min_x": float(x.min()),
+            "max_x": float(x.max()),
+            "min_y": float(y.min()),
+            "max_y": float(y.max()),
+            "min_z": float(z.min()),
+            "max_z": float(z.max()),
+            "width_m": float(x.max() - x.min()),
+            "length_m": float(y.max() - y.min()),
+            "area_hectares": float((x.max() - x.min()) * (y.max() - y.min()) / 10000),
         },
         "point_density": {
             "total_points": len(las),
-            "area_m2": float((las.x.max() - las.x.min()) * (las.y.max() - las.y.min())),
-            "points_per_m2": float(len(las) / ((las.x.max() - las.x.min()) * (las.y.max() - las.y.min()))),
+            "area_m2": float((x.max() - x.min()) * (y.max() - y.min())),
+            "points_per_m2": float(len(las) / ((x.max() - x.min()) * (y.max() - y.min()))),
         },
         "height_statistics": {
-            "min_height_m": float(las.z.min()),
-            "max_height_m": float(las.z.max()),
-            "mean_height_m": float(las.z.mean()),
-            "median_height_m": float(np.median(las.z)),
-            "std_height_m": float(las.z.std()),
+            "min_height_m": float(z.min()),
+            "max_height_m": float(z.max()),
+            "mean_height_m": float(z.mean()),
+            "median_height_m": float(np.median(z)),
+            "std_height_m": float(z.std()),
             "percentiles": {
-                "p10": float(np.percentile(las.z, 10)),
-                "p25": float(np.percentile(las.z, 25)),
-                "p50": float(np.percentile(las.z, 50)),
-                "p75": float(np.percentile(las.z, 75)),
-                "p90": float(np.percentile(las.z, 90))
+                "p10": float(np.percentile(z, 10)),
+                "p25": float(np.percentile(z, 25)),
+                "p50": float(np.percentile(z, 50)),
+                "p75": float(np.percentile(z, 75)),
+                "p90": float(np.percentile(z, 90))
             }
         },
         "classifications": {},
@@ -129,27 +137,24 @@ def create_preview_plot(las, output_path):
     # Top down scatter plot coloured by height
     print("Generating preview visualization...")
 
+    x = np.array(las.x)
+    y = np.array(las.y)
+    z = np.array(las.z)
+
     sample_size = min(100_000, len(las))
     indices = np.random.choice(len(las), size=sample_size, replace=False)
 
-    x_sample = las.x[indices]
-    y_sample = las.y[indices]
-    z_sample = las.z[indices]
-
-    x_norm = (x_sample - x_sample.min()) / (x_sample.max() - x_sample.min())
-    y_norm = (y_sample - y_sample.min()) / (y_sample.max() - y_sample.min())
-
     fig, ax = plt.subplots(figsize=(10, 8))
-    scatter = ax.scatter(x_norm, y_norm, c=z_sample, cmap='viridis', s=1, alpha=0.6)
+    scatter = ax.scatter(x[indices], y[indices], c=z[indices], cmap='viridis', s=1, alpha=0.6)
 
     ax.set_title("Whian Whian Rainforest LiDAR Preview\n(Top-down view coloured by height)", fontsize=14, fontweight='bold', pad=20)
-    ax.set_xlabel('Normalized X Coordinate')
-    ax.set_ylabel('Normalized Y Coordinate')
+    ax.set_xlabel('X Coordinate')
+    ax.set_ylabel('Y Coordinate')
     ax.set_aspect('equal')
     ax.grid(True, alpha=0.3)
 
-    cbar = plt.colorbar(scatter, ax=ax)
-    cbar.set_label('Height (m)', rotation=270, labelpad=20)
+    cbar = plt.colorbar(scatter, ax=ax, pad=0.02)
+    cbar.set_label('Height (m)', rotation=270, labelpad=20, fontsize=12)
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
@@ -218,3 +223,27 @@ def print_summary_console(report):
         print(f"   • {rec}")
     
     print("="*70 + "\n")
+
+def main():
+    # main execution pipeline
+
+    # load data
+    las = load_laz_file(RAW_DATA_PATH)
+
+    # extract metadata
+    metadata = extract_metadata(las, RAW_DATA_PATH)
+
+    # validate
+    issues, recommendations = validate_data_quality(metadata)
+
+    # create preview viz
+    create_preview_plot(las, OUTPUT_PREVIEW_PATH)
+
+    # Save report
+    report = save_summary_report(metadata, issues, recommendations, OUTPUT_REPORT_PATH)
+
+    # print console summary
+    print_summary_console(report)
+
+if __name__ == "__main__":
+    main()
