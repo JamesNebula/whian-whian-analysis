@@ -109,3 +109,84 @@ def interpolate_dtm(ground_x, ground_y, ground_z, grid_xx, grid_yy, method='line
         print(f"    Gap-filled coverage: 100%")
     
     return dtm
+
+def save_dtm_geotiff(dtm, min_x, max_y, resolution, crs_epsg, output_path):
+    print(f"Saving DTM to GeoTIFF...")
+
+    height, width = dtm.shape
+
+    # Create affine transform (top-left origin)
+    transform = from_origin(min_x, max_y, resolution, resolution)
+
+    with rasterio.open(
+        output_path,
+        'w',
+        driver='GTiff',
+        height=height,
+        width=width,
+        count=1,
+        dtype=dtm.dtype,
+        crs=f"EPSG:{crs_epsg}",
+        transform=transform,
+        nodata=np.nan,
+        compress='lzw'
+    ) as dst:
+        dst.write(dtm, 1)
+
+    print(f"    Saved: {output_path}")
+    print(f"    CRS: EPSG: {crs_epsg} (GDA2020 MGA ZONE 56)")
+    print(f"    Resolution: {resolution}m")
+
+def create_dtm_preview(dtm, output_path, min_x, max_y, resolution):
+    print("Generating DTM preview...")
+
+    fig, ax = plt.subplots(figsize=(14, 10))
+
+    # Plot DTM with terrain appropriate colormap
+    im = ax.imshow(
+        dtm, 
+        cmap='terrain',
+        origin='upper',
+        extent=[min_x, min_x + dtm.shape[1] * resolution, 
+                max_y - dtm.shape[0] * resolution, max_y], # type: ignore
+        interpolation='bilinear'
+    )
+
+    # Add contour lines for terrain detail
+    contours = ax.contour(
+        dtm, 
+        levels=np.arange(np.nanmin(dtm), np.nanmax(dtm), 10), #10m contours
+        colors='black',
+        alpha=0.3,
+        lindwidths=0.5,
+        origin='upper',
+        extent=[min_x, min_x + dtm.shape[1] * resolution,
+                max_y - dtm.shape[0] * resolution, max_y]
+    )
+    ax.clabel(contours, inline=True, fontsize=8, fmt='%d')
+
+    ax.set_title('Whian Whian Digital Terrain Model\n2m Resolution | GDA2020 MGA Zone 56',
+                 fontsize=16, fontweight='bold', pad=20)
+    ax.set_xlabel('Easting (m)', fontsize=12)
+    ax.set_ylabel('Northing (m)', fontsize=12)
+
+    cbar = plt.colorbar(im, ax=ax, pad=0.2, fraction=0.025)
+    cbar.set_label('Elevation (m ASL)', rotation=270, labelpad=25, fontsize=12)
+
+    # Add scale bar
+    scale_bar_length = 500 # 500 meters
+    scale_bar_x = min_x + 200
+    scale_bar_y = max_y - (dtm.shape[0] * resolution) + 100
+
+    ax.plot([scale_bar_x, scale_bar_x + scale_bar_length],
+            [scale_bar_y, scale_bar_y],
+            'k-', linewidth=3)
+    ax.text(scale_bar_x + scale_bar_length/2, scale_bar_y - 50,
+            f'{scale_bar_length}m',
+            ha='center', va='top', fontsize=10, fontweight='bold')
+    
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=20, bbox_inches='tight')
+    plt.close()
+
+    print(f"    Preview Saved: {output_path}")
