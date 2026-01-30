@@ -190,3 +190,44 @@ def create_dtm_preview(dtm, output_path, min_x, max_y, resolution):
     plt.close()
 
     print(f"    Preview Saved: {output_path}")
+
+def validate_dtm(dtm, original_min_z, original_max_z):
+    # Validate DTM against original point cloud stats
+    print("Validating DTM quality...")
+
+    dtm_min = np.nanmin(dtm)
+    dtm_max = np.nanmax(dtm)
+    dtm_mean = np.nanmean(dtm)
+    dtm_std = np.nanstd(dtm)
+
+    print(f"    DTM Elevation Range: {dtm_min:.2f}m - {dtm_max:.2f}m")
+    print(f"    Original Point Range: {original_min_z:.2f}m - {original_max_z:.2f}m")
+
+    # Validation checks
+    issues = []
+    if dtm_min < original_min_z - 5:
+        issues.append(f"DTM minimum ({dtm_min:.1f}m) is {original_min_z - dtm_min:.1f}m below raw data minimum")
+    if dtm_max > original_max_z + 5:
+        issues.append(f"DTM Maximum ({dtm_max:.1f}m) is {dtm_max - original_max_z:.1f}m above raw data maximum")
+
+    # Terrain roughness check (steeper areas have higher std)
+    if dtm_std < 10:
+        print(f"    Low terrain variation (σ={dtm_std:.1f}m) - unexpected for Nightcap Range")
+    else:
+        print(f"    Healthy terrain variation (σ={dtm_std:.1f}m) - consistent with mountainous rainforest")
+    
+    if not issues:
+        print("     DTM validation passed")
+    else:
+        print("     Validation warnings:")
+        for issue in issues:
+            print(f"    Issue: {issue}")
+    
+    return {
+        "dtm_min_m": float(dtm_min),
+        "dtm_max_m": float(dtm_max),
+        "dtm_mean_m": float(dtm_mean),
+        "dtm_std_m": float(dtm_std),
+        "validation_issues": issues,
+        "validation_passed": len(issues) == 0
+    }
