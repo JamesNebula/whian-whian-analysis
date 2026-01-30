@@ -1,0 +1,39 @@
+{
+  "project": "Whian Whian Forest Analysis",
+  "date_processed": "2026-01-31T06:28:58.006078",
+  "input_data": {
+    "filename": "whian.laz",
+    "total_points": 6261585,
+    "ground_points_extracted": 384943,
+    "ground_point_percentage": 6.1476926369281895
+  },
+  "dtm_parameters": {
+    "resolution_m": 2.0,
+    "interpolation_method": "linear",
+    "grid_dimensions": "1001 x 1001 pixels",
+    "crs_epsg": 7856
+  },
+  "dtm_statistics": {
+    "dtm_min_m": 187.03801316149,
+    "dtm_max_m": 326.43628999516676,
+    "dtm_mean_m": 221.6638646706991,
+    "dtm_std_m": 35.843331425271984,
+    "validation_issues": [],
+    "validation_passed": true
+  },
+  "quality_assessment": {
+    "coverage_percentage": 99.58393255096551,
+    "validation_passed": true,
+    "notes": [
+      "2m resolution used for stability with low ground points (6.1% coverage)",
+      "Linear interpolation preserves steep terrain features without artifacts",
+      "Gap filling applied to areas with insufficient ground points",
+      "Contour lines added to preview for terrain readability"
+    ]
+  },
+  "outputs": {
+    "dtm_geotiff": "outputs/dtm/whian_whian_dtm_2m.tif",
+    "preview_image": "outputs/previews/dtm_preview.png",
+    "report_json": "outputs/reports/dtm_generation_report.json"
+  }
+}

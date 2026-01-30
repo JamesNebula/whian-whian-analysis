@@ -170,7 +170,7 @@ def create_dtm_preview(dtm, output_path, min_x, max_y, resolution):
     ax.set_xlabel('Easting (m)', fontsize=12)
     ax.set_ylabel('Northing (m)', fontsize=12)
 
-    cbar = plt.colorbar(im, ax=ax, pad=0.2, fraction=0.025)
+    cbar = plt.colorbar(im, ax=ax, pad=0.1, fraction=0.025)
     cbar.set_label('Elevation (m ASL)', rotation=270, labelpad=25, fontsize=12)
 
     # Add scale bar
@@ -186,7 +186,7 @@ def create_dtm_preview(dtm, output_path, min_x, max_y, resolution):
             ha='center', va='top', fontsize=10, fontweight='bold')
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=20, bbox_inches='tight')
+    plt.savefig(output_path, dpi=100, bbox_inches='tight')
     plt.close()
 
     print(f"    Preview Saved: {output_path}")
@@ -231,3 +231,119 @@ def validate_dtm(dtm, original_min_z, original_max_z):
         "validation_issues": issues,
         "validation_passed": len(issues) == 0
     }
+
+def save_generation_report(report_data, output_path):
+    print("\nSaving generation report...")
+
+    report = {
+        "project": "Whian Whian Forest Analysis",
+        "date_processed": datetime.now().isoformat(),
+        "input_data": {
+            "filename": "whian.laz",
+            "total_points": 6261585,
+            "ground_points_extracted": report_data["ground_points_count"],
+            "ground_point_percentage": report_data["ground_point_percentage"]
+        },
+        "dtm_parameters": {
+            "resolution_m": report_data["resolution"],
+            "interpolation_method": report_data["interpolation_method"],
+            "grid_dimensions": f"{report_data['grid_width']} x {report_data['grid_height']} pixels",
+            "crs_epsg": CRS_EPSG
+        },
+        "dtm_statistics": report_data["dtm_stats"],
+        "quality_assessment": {
+            "coverage_percentage": report_data["coverage_pct"],
+            "validation_passed": report_data["dtm_stats"]["validation_passed"],
+            "notes": [
+                "2m resolution used for stability with low ground points (6.1% coverage)",
+                "Linear interpolation preserves steep terrain features without artifacts",
+                "Gap filling applied to areas with insufficient ground points",
+                "Contour lines added to preview for terrain readability"
+            ]
+        },
+        "outputs": {
+            "dtm_geotiff": str(OUTPUT_DTM_PATH),
+            "preview_image": str(OUTPUT_PREVIEW_PATH),
+            "report_json": str(output_path)
+        }
+    }
+
+    with open(output_path, 'w') as f:
+        json.dump(report, f, indent=2)
+
+    print(f"    Report saved: {output_path}")
+    return report
+
+def print_summary_console(report):
+    dtm_params = report["dtm_parameters"]
+    dtm_stats = report["dtm_statistics"]
+    qa = report["quality_assessment"]
+
+    print("="*80 + "\n")
+    print("\n   INPUT DATA")
+    print(f"Ground points used: {report['input_data']['ground_points_extracted']:,}"
+          f"({report['input_data']['ground_point_percentage']:.1f}%)")
+    
+    print("\n   DTM SPECIFICATIONS")
+    print(f"    Resolution: {dtm_params['resolution_m']}m")
+    print(f"    Dimensions: {dtm_params['grid_dimensions']}")
+    print(f"    CRS: EPSG: {dtm_params['crs_epsg']}")
+    print(f"    Interpolation: {dtm_params['interpolation_method']}")
+
+    print("\n   TERRAIN STATISTICS")
+    print(f"    Elevation Range: {dtm_stats['dtm_min_m']:.1f}m - {dtm_stats['dtm_max_m']:.1f}m")
+    print(f"    Mean Elevation: {dtm_stats['dtm_mean_m']:.1f}m")
+    print(f"    Terrain Roughness: {dtm_stats['dtm_std_m']:.1f}m")
+
+    print("\n   QUALITY ASSESSMENT")
+    print(f"    Coverage: {qa['coverage_percentage']:.1f}%")
+    print(f"    Validation: {'PASSED' if qa['validation_passed'] else 'WARNING'}")
+
+    print("\n   OUTPUTS GENERATED")
+    for key, value in report['outputs'].items():
+        print(f"    {key:15s} {value}")
+
+    print("="*80 + "\n")
+
+def main():
+    print("Loading File...")
+    las = laspy.read(RAW_DATA_PATH)
+    print(f"    Loaded {len(las):,} points\n")
+
+    #Extract ground points
+    ground_x, ground_y, ground_z, min_x, max_x, min_y, max_y = extract_ground_points(las)
+
+    # Create interpolation grid
+    grid_xx, grid_yy, resolution = generate_dtm_grid(min_x, max_x, min_y, max_y, resolution=2.0)
+
+    # Interpolate DTM surface
+    dtm = interpolate_dtm(ground_x, ground_y, ground_z, grid_xx, grid_yy, method='linear')
+
+    # Validate DTM
+    dtm_stats = validate_dtm(dtm, np.array(las.z).min(), np.array(las.z).max())
+
+    # Save as GeoTIFF
+    save_dtm_geotiff(dtm, min_x, max_y, resolution, CRS_EPSG, OUTPUT_DTM_PATH)
+
+    # Create preview visualisation
+    create_dtm_preview(dtm, OUTPUT_PREVIEW_PATH, min_x, max_y, resolution)
+
+    # Generate report
+    report_data = {
+        "ground_points_count": len(ground_x),
+        "ground_point_percentage": len(ground_x) / len(las) * 100,
+        "resolution": resolution,
+        "interpolation_method": 'linear',
+        "grid_width": grid_xx.shape[1],
+        "grid_height": grid_xx.shape[0],
+        "coverage_pct": (np.sum(~np.isnan(dtm)) / dtm.size) * 100,
+        "dtm_stats": dtm_stats
+    }
+
+    report = save_generation_report(report_data, OUTPUT_REPORT_PATH)
+
+    # Print console summary
+    print_summary_console(report)
+
+if __name__ == "__main__":
+    main()
