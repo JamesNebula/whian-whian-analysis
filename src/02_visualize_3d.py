@@ -11,7 +11,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Configuration
-RAW_DATA_PATH = Path("data/raw/whian_whian.laz")
+RAW_DATA_PATH = Path("data/raw/whian.laz")
 OUTPUT_3D_PNG = Path("outputs/visualizations/canopy_3d.png")
 OUTPUT_3D_ROTATING_GIF = Path("outputs/visualizations/canopy_3d_rotating.gif")  # Optional
 OUTPUT_HEIGHT_HIST = Path("outputs/visualizations/height_histogram.png")
@@ -20,7 +20,7 @@ OUTPUT_HEIGHT_HIST = Path("outputs/visualizations/height_histogram.png")
 OUTPUT_3D_PNG.parent.mkdir(parents=True, exist_ok=True)
 
 
-def load_and_sample_points(filepath, sample_size=100000):
+def load_and_sample_points(filepath, sample_size=3000000):
     
     print("🔍 Loading LAZ file...")
     las = laspy.read(filepath)
@@ -192,7 +192,7 @@ def main():
     print("="*70 + "\n")
     
     # Step 1: Load and sample points
-    x, y, z = load_and_sample_points(RAW_DATA_PATH, sample_size=100000)
+    x, y, z = load_and_sample_points(RAW_DATA_PATH, sample_size=3000000)
     
     # Step 2: Create 3D scatter plot
     create_3d_scatter(x, y, z, OUTPUT_3D_PNG)
