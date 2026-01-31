@@ -186,3 +186,143 @@ def identify_conservation_priority(chm, complexity):
     print(f"    High priority zones: {high_area/total_pixels*100:.1f}% ({high_area*4/10000:.1f} ha)")
 
     return conservation_map, priority_score
+
+def save_raster(data, transform, crs, output_path, nodata=0, dtype=rasterio.float32):
+    # Save raster data as geotiff
+    height, width = data.shape
+
+    with rasterio.open(
+        output_path, 
+        'w',
+        driver='GTiff',
+        height=height,
+        width=width,
+        count=1,
+        dtype=dtype,
+        crs=crs,
+        transform=transform,
+        nodata=nodata,
+        compress='lzw'
+    ) as dst:
+        dst.write(data, 1)
+
+    print(f"    Saved: {output_path}")
+
+def create_chm_preview(chm, complexity, conservation_map, transform, output_path):
+    # Create chm preview with complexity overlay
+    print("\nGenerating CHM preview visualization...")
+
+    fig = plt.figure(figsize=(16, 10))
+    gs = fig.add_gridspec(2, 3, hspace=0.3, wspace=0.3)
+
+    # plot 1 CHM
+    ax1 = fig.add_subplot(gs[0, :2])
+    im1 = ax1.imshow(chm, cmap='YlGn', origin='upper', vmin=0, vmax=40)
+    ax1.set_title('Canopy Height Model', fontsize=14, fontweight='bold')
+    ax1.set_xlabel('Easting (m)')
+    ax1.set_ylabel('Northing (m)')
+    cbar1 = plt.colorbar(im1, ax=ax1, fraction=0.025, pad=0.01)
+    cbar1.set_label('Height (m)', rotation=270, labelpad=15)
+
+    # Add contour lines for terrain context 
+    dtm_path = Path("outputs/dtm/whian_whian_dtm_2m.tif")
+    if dtm_path.exists():
+        with rasterio.open(dtm_path) as src:
+            dtm = src.read(1)
+        contours = ax1.contour(dtm, levels=np.arange(200, 370, 20),
+                               colors='gray', alpha=0.3, linewidths=0.5)
+        ax1.clabel(contours, inline=True, fontsize=6, fmt='%d')
+
+    # plot 2 Vertical complexity
+    ax2 = fig.add_subplot(gs[1, 0])
+    im2 = ax2.imshow(complexity, cmap='RdYlGn', origin='upper', vmin=1, vmax=5)
+    ax2.set_title('Vertical Complexity Index\n(strata count)', fontsize=12, fontweight='bold')
+    cbar2 = plt.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
+    cbar2.set_ticks([1, 2, 3, 4, 5])
+
+    # Plot 3 Conservation Priority
+    ax3 = fig.add_subplot(gs[1, 1])
+    cmap = mcolors.ListedColormap(['#d73027', '#fc8d59', '#fee08b', '#1a9850'])
+    bounds = [0.5, 1.5, 2.5, 3.5, 4.5]
+    norm = mcolors.BoundaryNorm(bounds, cmap.N)
+    im3 = ax3.imshow(conservation_map, cmap=cmap, norm=norm, origin='upper')
+    ax3.set_title('Conservation Priority Zones', fontsize=12, fontweight='bold')
+    cbar3 = plt.colorbar(im3, ax=ax3, fraction=0.046, pad=0.04, 
+                         ticks=[1, 2, 3, 4], boundaries=bounds)
+    cbar3.ax.set_yticklabels(['Low', 'Medium', 'High', 'Critical'])
+
+    # Plot 4 height distribution histogram
+    ax4 = fig.add_subplot(gs[1, 2])
+    heights = chm[chm > 0].flatten()
+    ax4.hist(heights, bins=30, color='#2c7fb8', edgecolor='white', linewidth=0.5)
+    ax4.set_xlabel('Canopy Height (m)')
+    ax4.set_ylabel('Frequency')
+    ax4.set_title('Height Distribution', fontsize=12, fontweight='bold')
+    ax4.axvline(heights.mean(), color='red', linestyle='--', label=f"Mean: {heights.mean():.1f}m")
+    ax4.legend()
+    ax4.grid(True, alpha=0.3)
+
+    # Add emergent tree annotation
+    emergent_count = np.sum(heights > 35)
+    ax4.text(0.98, 0.95, f"Emergent trees\n(>35m): {emergent_count:,}",
+             transform=ax4.transAxes, ha='right', va='top', 
+             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+    
+    # Main title
+    fig.suptitle('Whian Whian Rainforest: Canopy Structure Analysis\n'
+                 '2m Resolution | GDA2020 MGA Zone 56', 
+                 fontsize=18, fontweight='bold', y=0.98)
+    
+    plt.savefig(output_path, dpi=200, bbox_inches='tight')
+    plt.close()
+
+    print(f"    Preview saved: {output_path}")
+
+def create_3d_visualization(normalized_x, normalized_y, normalized_heights, normalized_z, output_path):
+    # Generate interactive 3d visualisation with matplotlib
+    print("Generating 3D canopy visualisation...")
+
+    sample_size = min(150_000, len(normalized_heights))
+    indices = np.random.choice(len(normalized_heights), size=sample_size, replace=False)
+
+    # Create 3d scatter plot
+    fig = plt.figure(figsize=(14, 10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot points colored by height above ground
+    scatter = ax.scatter(
+        normalized_x[indices],
+        normalized_y[indices],
+        normalized_z[indices],
+        c=normalized_heights[indices],
+        cmap='YlGn',
+        s=1,
+        alpha=0.6
+    )
+
+    # Customize plot
+    ax.set_title('Whian Whian Rainforest Canopy Structure\n(Interactive 3D View)',
+                 fontsize=16, fontweight='bold', pad=20)
+    ax.set_xlabel('Easting (m)', labelpad=10)
+    ax.set_ylabel('Northing (m)', labelpad=10)
+    ax.set_zlabel('Elevation (m ASL)', labelpad=10)
+
+    # Set viewing angle for best rainforest perspective
+    ax.view_init(elev=30, azim=60)
+
+    # Colorbar
+    cbar = plt.colorbar(scatter, ax=ax, pad=0.1)
+    cbar.set_label('Height Above Ground (m)', rotation=270, labelpad=25)
+
+    # Add terrain surface
+    min_x, max_x = normalized_x.min(), normalized_x.max()
+    min_y, max_y = normalized_y.min(), normalized_y.max()
+    xx, yy = np.meshgrid(np.linspace(min_x, max_x, 50), np.linspace(min_y, max_y, 50))
+    zz = np.full_like(xx, normalized_z.min() + 5) # Simplified ground surface
+    ax.plot_surface(xx, yy, zz, color='brown', alpha=0.2, linewidth=0)
+
+    plt.tight_layout()
+    plt.savefig(output_path.with_suffix('.png'), dpi=150, bbox_inches='tight')
+    plt.close()
+
+    print(f"    3D Preview saved: {output_path.with_suffix('.png')}")
