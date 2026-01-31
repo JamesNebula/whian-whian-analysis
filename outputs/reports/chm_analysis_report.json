@@ -1,0 +1,50 @@
+{
+  "project": "Whian Whian Rainforest LiDAR Analysis",
+  "date_processed": "2026-01-31T16:27:54.309827",
+  "input_data": {
+    "laz_file": "whian.laz",
+    "dtm_file": "whian_whian_dtm_2m.tif",
+    "total_points": 6261585,
+    "points_above_ground": 4562239,
+    "ground_point_percentage": 6.1
+  },
+  "chm_parameters": {
+    "reolution_m": 2.0,
+    "rasterization_method": "max height per pixel",
+    "gap_filling": "3x3 maximum filter"
+  },
+  "chm_statistics": {
+    "mean_height_m": 37.10343208529467,
+    "max_height_m": 137.3310096777698,
+    "median_height_m": 33.03587253424496,
+    "std_height_m": 25.687817086074634,
+    "emergent_trees_count": 2153098,
+    "emergent_trees_pct": 47.19388879013134
+  },
+  "biodiversity_metrics": {
+    "vertical_complexity": {
+      "mean_strata": 1.371658702732405,
+      "max_strata": 5,
+      "strata_definition": "0-2m, 2-5m, 5-10m, 10-20m, 20m+"
+    },
+    "conservation_priority": {
+      "critical_zone_pct": 0.000499001498002497,
+      "high_priority_pct": 0.8990010988012985,
+      "critical_zone_hectares": 0.002,
+      "priority_method": "Weighted combination: 40% canopy height + 60% vertical complexity"
+    }
+  },
+  "ecological_insights": [
+    "Canopy height distribution shows healthy multilayered rainforest structure",
+    "Identified 2,153,098 emergent trees (>35m)",
+    "Critical conservation zones (0.0 ha) characterized by tall canopy (>30m) and high structural complexity (>4 strata)",
+    "Lower density (1.6 pts/m2) sufficient for landscape scale structural analysis despite limitations for fine-scale species mapping"
+  ],
+  "outputs": {
+    "chm_geotiff": "outputs/chm/whian_whian_chm_2m.tif",
+    "complexity_geotiff": "outputs/chm/whian_whian_complexity_2m.tif",
+    "conservation_geotiff": "outputs/chm/whian_whian_conservation_priority.tif",
+    "preview_image": "outputs/previews/chm_preview.png",
+    "report_json": "outputs/reports/chm_analysis_report.json"
+  }
+}

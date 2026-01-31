@@ -360,7 +360,7 @@ def save_analysis_report(chm, complexity, conservation_map, normalized_heights, 
                 "max_strata": int(complexity.max()),
                 "strata_definition": "0-2m, 2-5m, 5-10m, 10-20m, 20m+"
             },
-            "convervation_priority": {
+            "conservation_priority": {
                 "critical_zone_pct": float(np.sum(conservation_map == 4) / conservation_map.size * 100),
                 "high_priority_pct": float(np.sum(conservation_map == 3) / conservation_map.size * 100),
                 "critical_zone_hectares": float(np.sum(conservation_map == 4) * 4 / 10000),
