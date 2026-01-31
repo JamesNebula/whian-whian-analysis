@@ -1,0 +1,28 @@
+{
+  "project": "Whian Whian Rainforest Grid Analysis",
+  "date_processed": "2026-01-31T19:25:48.628990",
+  "grid_parameters": {
+    "cell_size_m": 50,
+    "total_cells": 1600,
+    "cells_with_data": 1571,
+    "coverage_percentage": 98.1875
+  },
+  "height_statistics": {
+    "mean_height_all_cells_m": 239.57790287700067,
+    "min_height_m": 187.14000000000001,
+    "max_height_m": 351.7329567655588,
+    "std_height_m": 42.118276750609894
+  },
+  "tall_zones": {
+    "threshold_m": 298.1797840909083,
+    "cells_count": 158,
+    "area_hectares": 39.5,
+    "percentage_of_grid": 9.875
+  },
+  "summary": [
+    "Analyzed 1,600 grid cells across Whian Whian rainforest",
+    "Mean canopy height: 239.6m",
+    "Identified 158 cells (39.5 ha) with tall canopy (\u2265298.2m)",
+    "Grid coverage: 98.2% of cells contained LiDAR points"
+  ]
+}
