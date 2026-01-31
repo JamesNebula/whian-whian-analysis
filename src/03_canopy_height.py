@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from pathlib import Path
 from datetime import datetime
+import json
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -326,3 +327,129 @@ def create_3d_visualization(normalized_x, normalized_y, normalized_heights, norm
     plt.close()
 
     print(f"    3D Preview saved: {output_path.with_suffix('.png')}")
+
+def save_analysis_report(chm, complexity, conservation_map, normalized_heights, output_path):
+    print("\nSaving analysis report...")
+
+    report = {
+        "project": 'Whian Whian Rainforest LiDAR Analysis',
+        "date_processed": datetime.now().isoformat(),
+        "input_data": {
+            "laz_file": "whian.laz",
+            "dtm_file": "whian_whian_dtm_2m.tif",
+            "total_points": 6261585,
+            "points_above_ground": int(len(normalized_heights)),
+            "ground_point_percentage": 6.1
+        },
+        "chm_parameters": {
+            "reolution_m": 2.0,
+            "rasterization_method": "max height per pixel",
+            "gap_filling": "3x3 maximum filter"
+        },
+        "chm_statistics": {
+            "mean_height_m": float(normalized_heights.mean()),
+            "max_height_m": float(normalized_heights.max()),
+            "median_height_m": float(np.median(normalized_heights)),
+            "std_height_m": float(normalized_heights.std()),
+            "emergent_trees_count": int(np.sum(normalized_heights > 35)),
+            "emergent_trees_pct": float(np.sum(normalized_heights > 35) / len(normalized_heights) * 100)
+        },
+        "biodiversity_metrics": {
+            "vertical_complexity": {
+                "mean_strata": float(complexity[complexity > 0].mean()),
+                "max_strata": int(complexity.max()),
+                "strata_definition": "0-2m, 2-5m, 5-10m, 10-20m, 20m+"
+            },
+            "convervation_priority": {
+                "critical_zone_pct": float(np.sum(conservation_map == 4) / conservation_map.size * 100),
+                "high_priority_pct": float(np.sum(conservation_map == 3) / conservation_map.size * 100),
+                "critical_zone_hectares": float(np.sum(conservation_map == 4) * 4 / 10000),
+                "priority_method": "Weighted combination: 40% canopy height + 60% vertical complexity"
+            }
+        },
+        "ecological_insights": [
+            "Canopy height distribution shows healthy multilayered rainforest structure",
+            f"Identified {np.sum(normalized_heights > 35):,} emergent trees (>35m)",
+            f"Critical conservation zones ({np.sum(conservation_map == 4) * 4 / 10000:.1f} ha) characterized by tall canopy (>30m) and high structural complexity (>4 strata)",
+            "Lower density (1.6 pts/m2) sufficient for landscape scale structural analysis despite limitations for fine-scale species mapping"
+        ],
+        "outputs": {
+            "chm_geotiff": str(OUTPUT_CHM_PATH),
+            "complexity_geotiff": str(OUTPUT_COMPLEXITY_PATH),
+            "conservation_geotiff": str(OUTPUT_CONSERVATION_PATH),
+            "preview_image": str(OUTPUT_PREVIEW_PATH),
+            "report_json": str(output_path)
+        }
+    }
+
+    with open(output_path, 'w') as f:
+        json.dump(report, f, indent=2)
+
+    print(f"    Report saved: {output_path}")
+    return report
+
+def print_summary_console(report):
+    
+    chm_stats = report["chm_statistics"]
+    bio_metrics = report["biodiversity_metrics"]
+    insights = report["ecological_insights"]
+    
+    print("="*80)
+    
+    print("\n  CANOPY STRUCTURE")
+    print(f"   Mean Height:    {chm_stats['mean_height_m']:.1f}m")
+    print(f"   Max Height:     {chm_stats['max_height_m']:.1f}m")
+    print(f"   Emergent Trees: {chm_stats['emergent_trees_count']:,} ({chm_stats['emergent_trees_pct']:.1f}%) >35m")
+    
+    print("\n  BIODIVERSITY METRICS")
+    print(f"   Vertical Complexity: {bio_metrics['vertical_complexity']['mean_strata']:.1f} strata/pixel (max {bio_metrics['vertical_complexity']['max_strata']})")
+    print(f"   Critical Zones:      {bio_metrics['conservation_priority']['critical_zone_hectares']:.1f} ha ({bio_metrics['conservation_priority']['critical_zone_pct']:.1f}%)")
+    print(f"   High Priority:       {bio_metrics['conservation_priority']['high_priority_pct']:.1f}% of landscape")
+    
+    print("\n  KEY ECOLOGICAL INSIGHTS")
+    for i, insight in enumerate(insights, 1):
+        print(f"   {i}. {insight}")
+    
+    print("\n  OUTPUTS GENERATED")
+    for key, value in report['outputs'].items():
+        print(f"   • {key:20s} {value}")
+    
+    print("="*80 + "\n")
+
+def main():
+    # load DTM 
+    dtm, transform, crs, bounds = load_dtm(DTM_PATH)
+
+    # load original laz file
+    las = laspy.read(RAW_DATA_PATH)
+
+    # Normalize heights above ground
+    normalized_x, normalized_y, normalized_heights, normalized_z = normalize_heights(las, dtm, transform)
+
+    # Generate CHM
+    chm = generate_chm(normalized_x, normalized_y, normalized_heights, dtm.shape, transform)
+
+    # calc vertical complexity index
+    complexity = calculate_vertical_complexity(normalized_x, normalized_y, normalized_heights, dtm.shape, transform)
+
+    # Identify conservation priority zones
+    conservation_map, priority_score = identify_conservation_priority(chm, complexity)
+
+    # save outputs
+    print("\nSaving raster outputs...")
+    save_raster(chm, transform, crs, OUTPUT_CHM_PATH, nodata=0, dtype=rasterio.float32)
+    save_raster(complexity, transform, crs, OUTPUT_COMPLEXITY_PATH, nodata=0, dtype=rasterio.uint8)
+    save_raster(conservation_map, transform, crs, OUTPUT_CONSERVATION_PATH, nodata=0, dtype=rasterio.uint8)
+    
+    # Create visualizations
+    create_chm_preview(chm, complexity, conservation_map, transform, OUTPUT_PREVIEW_PATH)
+    create_3d_visualization(normalized_x, normalized_y, normalized_heights, normalized_z, OUTPUT_3D_HTML)
+
+    # save analysis report
+    report = save_analysis_report(chm, complexity, conservation_map, normalized_heights, OUTPUT_REPORT_PATH)
+
+    # print summary
+    print_summary_console(report)
+
+if __name__ == "__main__":
+    main()
